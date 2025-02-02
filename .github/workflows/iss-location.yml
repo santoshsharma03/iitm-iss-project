@@ -1,0 +1,41 @@
+name: Log ISS Location Data Daily
+
+on:
+  schedule:
+    # Runs at 12:00 UTC (noon) every day
+    - cron: "0 12 * * *"
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  collect-iss-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Permissions to write to the repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Fetch ISS location data
+        run: | # Python script to fetch ISS data
+          uv run --with requests python << 'EOF'
+          import requests
+
+          # Fetch the ISS data
+          data = requests.get('http://api.open-notify.org/iss-now.json').text
+          
+          # Save it to a file
+          with open('iss-location.jsonl', 'a') as f:
+              f.write(data + '\n')
+          'EOF'
+
+      - name: Commit and push changes
+        run: | # Shell commands to commit and push changes
+          git config --local user.email "23f3004321@ds.study.iitm.ac.in"
+          git config --local user.name "github-actions[bot]"
+          git add iss-location.jsonl
+          git commit -m "Update ISS position data [skip ci]" || exit 0
+          git push
